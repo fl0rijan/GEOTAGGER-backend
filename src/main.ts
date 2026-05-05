@@ -4,9 +4,12 @@ import { HttpStatus, ValidationPipe } from '@nestjs/common';
 import { ExcludeDataInterceptor } from './common/interceptors/exlude-data.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.set('trust proxy', 1);
 
   app.useGlobalInterceptors(new ExcludeDataInterceptor());
   app.useGlobalPipes(
