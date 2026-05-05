@@ -1,13 +1,113 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ActionType {
+  CLICK
+  SCROLL
+  ADDED_VALUE
+  CHANGED_VALUE
+  REMOVED_VALUE
+}
+
+model User {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  firstName String
+  lastName  String
+
+  email    String  @unique
+  password String?
+
+  googleId   String? @unique
+  facebookId String? @unique
+
+  verified Boolean @default(false)
+  image    String? @default("https://gaylhwpyeocilfwtbyrp.supabase.co/storage/v1/object/public/auctions/e65a1f93-500e-49a4-8700-c8f704275f3f.jpg")
+  role     Role    @default(USER)
+
+  gamePoints Int @default(10)
+
+  refreshToken           String?
+  verifyEmailToken       String?   @unique
+  lastVerificationSentAt DateTime?
+  resetPasswordToken     String?   @unique
+  resetPasswordExpires   DateTime?
+
+  uploadedLocations Location[]
+  guesses           Guess[]
+  actionLogs        ActionLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Location {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  imageUrl  String
+  latitude  Float
+  longitude Float
+  name      String?
+
+  userId  String  @db.Uuid
+  user    User    @relation(fields: [userId], references: [id])
+  guesses Guess[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("locations")
+}
+
+model Guess {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  guessedLat    Float
+  guessedLng    Float
+  errorDistance Float
+  pointsLost    Int
+  attemptNumber Int
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  locationId String   @db.Uuid
+  location   Location @relation(fields: [locationId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, locationId, attemptNumber])
+  @@map("guesses")
+}
+
+model ActionLog {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  action        ActionType
+  componentType String?
+  newValue      String?
+  url           String
+
+  userId String? @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@map("action_logs")
 }
