@@ -14,6 +14,8 @@ const EXCLUDED_KEYS = [
   'resetPasswordExpires',
   'refreshToken',
   'deletedAt',
+  'googleId',
+  'facebookId',
 ];
 
 @Injectable()

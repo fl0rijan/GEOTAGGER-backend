@@ -149,9 +149,9 @@ export class AuthService {
     if (!user) throw new NotFoundException("Didn't find anything");
 
     const {
-      createdAt: _ca,
       updatedAt: _updatedAt,
       deletedAt: _deletedAt,
+      lastVerificationSentAt: _lastVerificationSentAt,
       ...safeUser
     } = user;
 
