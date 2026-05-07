@@ -168,16 +168,22 @@ export class AuthService {
     });
     if (!user) throw new NotFoundException("Didn't find anything");
 
-    if (!user.password) {
-      return null;
+    if (user.password) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException(
+          'Current password is required to set a new one.',
+        );
+      }
+
+      const isMatch = await this.deHash(dto.currentPassword, user.password);
+      if (!isMatch) {
+        throw new ForbiddenException('Current password is incorrect.');
+      }
     }
 
-    const isMatch = await this.deHash(dto.currentPassword, user.password);
-    if (!isMatch) throw new ForbiddenException('Current password is incorrect');
-
-    if (dto.currentPassword === dto.newPassword) {
+    if (user.password && (await this.deHash(dto.newPassword, user.password))) {
       throw new BadRequestException(
-        'New password can not be the same as the old password.',
+        'New password cannot be the same as current password.',
       );
     }
 
@@ -187,6 +193,7 @@ export class AuthService {
       where: { id: userId },
       data: {
         password: hashedPassword,
+        refreshToken: null,
       },
     });
   }
@@ -345,5 +352,58 @@ export class AuthService {
         refreshToken: null,
       },
     });
+  }
+
+  async validateOAuthUser(profile: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    googleId?: string;
+    facebookId?: string;
+    picture?: string;
+  }) {
+    let user = await this.prisma.user.findUnique({
+      where: { email: profile.email },
+    });
+
+    if (user) {
+      if (profile.googleId && !user.googleId) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: profile.googleId },
+        });
+        this.logger.log(
+          `Linked Google account to existing user: ${user.email}`,
+        );
+      }
+      if (profile.facebookId && !user.facebookId) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            facebookId: profile.facebookId,
+            verified: true,
+          },
+        });
+        this.logger.log(
+          `Linked Facebook account to existing user: ${user.email}`,
+        );
+      }
+    } else {
+      user = await this.prisma.user.create({
+        data: {
+          email: profile.email,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          googleId: profile.googleId,
+          facebookId: profile.facebookId,
+          image: profile.picture,
+          verified: true,
+          gamePoints: 10,
+          password: null,
+        },
+      });
+    }
+
+    return user;
   }
 }

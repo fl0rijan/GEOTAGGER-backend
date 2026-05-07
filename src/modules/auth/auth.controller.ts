@@ -25,18 +25,37 @@ import { GetUser } from '../../common/decorators/get-user.decorator';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { Throttle } from '@nestjs/throttler';
-import { AdminGuard } from '../../common/guards/admin.guard';
+import { ConfigService } from '@nestjs/config';
+
+interface GoogleUser {
+  email: string;
+  firstName: string;
+  lastName: string;
+  picture: string;
+  googleId: string;
+}
+
+interface FacebookUser {
+  email: string;
+  firstName: string;
+  lastName: string;
+  picture: string;
+  facebookId: string;
+}
 
 @ApiTags('Auth')
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly config: ConfigService,
+  ) {}
 
   private setRefreshCookie(res: express.Response, refreshToken: string) {
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'lax',
+      sameSite: 'none',
       path: '/',
       expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     });
@@ -77,7 +96,6 @@ export class AuthController {
     };
   }
 
-  @UseGuards(AdminGuard)
   @Post('logout')
   async logout(
     @GetUser('id') userId: string,
@@ -163,5 +181,71 @@ export class AuthController {
   @ApiOperation({ summary: 'Resend the verification email' })
   async resend(@Body() dto: ResendVerificationDto) {
     return this.authService.resendVerificationEmail(dto);
+  }
+
+  @Get('google')
+  @IsPublic()
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(): Promise<void> {}
+
+  @Get('google/callback')
+  @IsPublic()
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(
+    @Req() req: express.Request,
+    @Res() res: express.Response,
+  ): Promise<void> {
+    const googleUser = req.user as GoogleUser;
+
+    const user = await this.authService.validateOAuthUser(googleUser);
+
+    const tokens = await this.authService.getTokens(
+      user.id,
+      user.email,
+      user.isAdmin,
+    );
+
+    await this.authService.updateRefreshToken(user.id, tokens.refreshToken);
+
+    this.setRefreshCookie(res, tokens.refreshToken);
+
+    const frontendUrl = this.config.getOrThrow<string>('FRONTEND_URL');
+
+    return res.redirect(
+      `${frontendUrl}/oauth-success?token=${tokens.accessToken}`,
+    );
+  }
+
+  @Get('facebook')
+  @IsPublic()
+  @UseGuards(AuthGuard('facebook'))
+  async facebookAuth() {}
+
+  @Get('facebook/callback')
+  @IsPublic()
+  @UseGuards(AuthGuard('facebook'))
+  async facebookAuthRedirect(
+    @Req() req: express.Request,
+    @Res() res: express.Response,
+  ): Promise<void> {
+    const fbUser = req.user as FacebookUser;
+
+    const user = await this.authService.validateOAuthUser(fbUser);
+
+    const tokens = await this.authService.getTokens(
+      user.id,
+      user.email,
+      user.isAdmin,
+    );
+
+    await this.authService.updateRefreshToken(user.id, tokens.refreshToken);
+
+    this.setRefreshCookie(res, tokens.refreshToken);
+
+    const frontendUrl = this.config.getOrThrow<string>('FRONTEND_URL');
+
+    return res.redirect(
+      `${frontendUrl}/oauth-success?token=${tokens.accessToken}`,
+    );
   }
 }
