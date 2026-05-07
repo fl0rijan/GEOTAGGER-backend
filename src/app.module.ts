@@ -10,6 +10,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { MailModule } from './modules/mail/mail.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { UsersModule } from './modules/users/users.module';
+import { LocationsModule } from './modules/locations/locations.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UsersModule } from './modules/users/users.module';
     MailModule,
     UploadsModule,
     UsersModule,
+    LocationsModule,
   ],
   controllers: [AppController],
   providers: [
