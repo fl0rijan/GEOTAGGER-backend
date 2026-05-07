@@ -3,11 +3,16 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   Max,
   Min,
 } from 'class-validator';
 
 export class CreateLocationDto {
+  @IsUrl()
+  @IsNotEmpty()
+  imageUrl: string;
+
   @IsNumber()
   @Min(-90)
   @Max(90)

@@ -10,6 +10,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { MailModule } from './modules/mail/mail.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { UsersModule } from './modules/users/users.module';
+import { LocationsModule } from './modules/locations/locations.module';
+import { TrackerModule } from './modules/tracker/tracker.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { UsersModule } from './modules/users/users.module';
     MailModule,
     UploadsModule,
     UsersModule,
+    LocationsModule,
+    TrackerModule,
   ],
   controllers: [AppController],
   providers: [
