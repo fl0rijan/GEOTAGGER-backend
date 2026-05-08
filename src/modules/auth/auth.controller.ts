@@ -52,10 +52,11 @@ export class AuthController {
   ) {}
 
   private setRefreshCookie(res: express.Response, refreshToken: string) {
+    const isProd = this.config.get('NODE_ENV') === 'production';
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
       expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     });

@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { ActionType } from '../../../../generated/prisma/enums';
+import { ActionType } from '@prisma/client';
 
 export class CreateActionLogDto {
   @IsEnum(ActionType)

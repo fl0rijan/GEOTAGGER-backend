@@ -14,7 +14,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaClientKnownRequestError } from '@prisma/client-runtime-utils';
-import { User } from '../../../generated/prisma/client';
+import { User } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { randomBytes } from 'node:crypto';
