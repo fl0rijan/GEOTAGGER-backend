@@ -8,15 +8,24 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import * as bcrypt from 'bcrypt';
 import { TokenResponse } from '../src/modules/auth/dto/token-response.dto';
+import { MailService } from '../src/modules/mail/mail.service';
 
 describe('Tracker and Admin', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
+  const mailServiceMock = {
+    sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(MailService)
+      .useValue(mailServiceMock)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
