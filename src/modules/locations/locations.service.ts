@@ -224,8 +224,8 @@ export class LocationsService {
 
         const result = await tx.$queryRaw<[{ distance: number }]>`
       SELECT ST_DistanceSphere(
-        ST_MakePoint(${dto.longitude}, ${dto.latitude}),
-        ST_MakePoint(${location.longitude}, ${location.latitude})
+        ST_MakePoint(${dto.longitude}::float, ${dto.latitude}::float),
+        ST_MakePoint(${location.longitude}::float, ${location.latitude}::float)
       ) as distance`;
 
         const errorDistance = result[0].distance;

@@ -7,20 +7,14 @@ import { cleanDatabase } from './test-utils';
 import { MailService } from '../src/modules/mail/mail.service';
 import cookieParser from 'cookie-parser';
 import { Server } from 'http';
-
-interface LoginResponse {
-  accessToken: string;
-}
-
-interface ProfileResponse {
-  email: string;
-}
+import { TokenResponse } from '../src/modules/auth/dto/token-response.dto';
+import { UserResponseDto } from '../src/modules/users/dto/user-response.dto';
 
 interface ResetPasswordResponse {
   message: string;
 }
 
-describe('Auth Module (e2e)', () => {
+describe('Auth Module', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
@@ -91,7 +85,7 @@ describe('Auth Module (e2e)', () => {
         .send({ email: testUser.email, password: testUser.password })
         .expect(200);
 
-      const body = res.body as LoginResponse;
+      const body = res.body as TokenResponse;
       expect(body.accessToken).toBeDefined();
     });
   });
@@ -106,14 +100,14 @@ describe('Auth Module (e2e)', () => {
         .post('/login')
         .send({ email: testUser.email, password: testUser.password });
 
-      const { accessToken } = loginRes.body as LoginResponse;
+      const { accessToken } = loginRes.body as TokenResponse;
 
       const res = await request(app.getHttpServer() as Server)
         .get('/me')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-      const body = res.body as ProfileResponse;
+      const body = res.body as UserResponseDto;
       expect(body.email).toBe(testUser.email);
     });
   });
@@ -128,7 +122,7 @@ describe('Auth Module (e2e)', () => {
         .post('/login')
         .send({ email: testUser.email, password: testUser.password });
 
-      const { accessToken } = loginRes.body as LoginResponse;
+      const { accessToken } = loginRes.body as TokenResponse;
 
       const res = await request(app.getHttpServer() as Server)
         .patch('/me/update-password')
@@ -154,7 +148,7 @@ describe('Auth Module (e2e)', () => {
         .post('/login')
         .send({ email: testUser.email, password: testUser.password });
 
-      const { accessToken } = loginRes.body as LoginResponse;
+      const { accessToken } = loginRes.body as TokenResponse;
 
       const res = await request(app.getHttpServer() as Server)
         .patch('/me/update-password')
@@ -238,7 +232,7 @@ describe('Auth Module (e2e)', () => {
         .send({ email: testUser.email, password: testUser.password })
         .expect(200);
 
-      const body = loginRes.body as LoginResponse;
+      const body = loginRes.body as TokenResponse;
       const accessToken = body.accessToken;
 
       const cookies = loginRes.get('Set-Cookie') || [];
@@ -287,7 +281,7 @@ describe('Auth Module (e2e)', () => {
         .set('Cookie', cookies)
         .expect(201);
 
-      const body = refreshRes.body as LoginResponse;
+      const body = refreshRes.body as TokenResponse;
       expect(body.accessToken).toBeDefined();
       expect(typeof body.accessToken).toBe('string');
     });
@@ -317,5 +311,39 @@ describe('Auth Module (e2e)', () => {
     expect(res.header.location).toContain(
       'https://www.facebook.com/v3.2/dialog/oauth?response_type=code&redirect_uri',
     );
+  });
+
+  describe('/me', () => {
+    it('should update your own profile information', async () => {
+      await request(app.getHttpServer() as Server)
+        .post('/signup')
+        .send(testUser);
+
+      const loginRes = await request(app.getHttpServer() as Server)
+        .post('/login')
+        .send({ email: testUser.email, password: testUser.password });
+
+      const { accessToken } = loginRes.body as TokenResponse;
+
+      const res = await request(app.getHttpServer() as Server)
+        .patch('/me')
+        .send({
+          firstName: 'Updated',
+          lastName: 'UpdatedLastName',
+        })
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      const body = res.body as ResetPasswordResponse;
+      expect(body.message).toBe('Successfully updated profile information');
+
+      const me = await request(app.getHttpServer() as Server)
+        .get('/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      const meBody = me.body as UserResponseDto;
+      expect(meBody.firstName).toBe('Updated');
+    });
   });
 });
