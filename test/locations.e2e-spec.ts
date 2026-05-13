@@ -7,6 +7,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { cleanDatabase, getAuthData } from './test-utils';
 import { UploadsService } from '../src/modules/uploads/uploads.service';
 import { GuessResultResponseDto } from '../src/modules/locations/dto/responses/guess-result.response.dto';
+import { MailService } from '../src/modules/mail/mail.service';
 
 describe('Locations Game Logic', () => {
   let app: INestApplication;
@@ -24,12 +25,19 @@ describe('Locations Game Logic', () => {
 
   const api = () => request(app.getHttpServer() as Server);
 
+  const mailServiceMock = {
+    sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(UploadsService)
       .useValue(uploadsServiceMock)
+      .overrideProvider(MailService)
+      .useValue(mailServiceMock)
       .compile();
 
     app = moduleFixture.createNestApplication();

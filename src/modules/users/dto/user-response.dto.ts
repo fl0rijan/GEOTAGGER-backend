@@ -6,5 +6,6 @@ export class UserResponseDto {
   verified: boolean;
   isAdmin: boolean;
   image: string;
+  gamePoints: number;
   createdAt: Date;
 }

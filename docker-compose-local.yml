@@ -3,7 +3,7 @@ services:
   db:
     image: postgis/postgis:15-3.3
     env_file:
-      - .env
+      - .env.local
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -19,7 +19,7 @@ services:
     build: .
     container_name: geotagger-api
     env_file:
-      - .env
+      - .env.local
     ports:
       - "3000:3000"
     depends_on:

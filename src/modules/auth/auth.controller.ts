@@ -24,7 +24,7 @@ import { UpdatePasswordDto } from './dto/update-password.dto';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 
 interface GoogleUser {
@@ -109,6 +109,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @SkipThrottle()
   async getMe(@GetUser('id') userId: string) {
     return await this.authService.getProfile(userId);
   }
@@ -124,6 +125,7 @@ export class AuthController {
   }
 
   @IsPublic()
+  @SkipThrottle()
   @ApiOkResponse({ type: TokenResponse })
   @Post('refresh')
   async refresh(
@@ -133,11 +135,17 @@ export class AuthController {
     const refreshToken = req.cookies['refresh_token'];
     if (!refreshToken) throw new UnauthorizedException();
 
-    const tokens = await this.authService.refreshTokens(refreshToken);
+    try {
+      const tokens = await this.authService.refreshTokens(refreshToken);
 
-    this.setRefreshCookie(res, tokens.refreshToken);
+      this.setRefreshCookie(res, tokens.refreshToken);
 
-    return { accessToken: tokens.accessToken };
+      return { accessToken: tokens.accessToken };
+    } catch {
+      res.clearCookie('refresh_token');
+    }
+
+    throw new UnauthorizedException('Session expired');
   }
 
   @IsPublic()

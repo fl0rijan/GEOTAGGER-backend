@@ -1,13 +1,16 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ActionType } from '@prisma/client';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateActionLogDto {
+  @ApiProperty({ enum: ActionType })
   @IsEnum(ActionType)
+  @IsNotEmpty()
   action: ActionType;
 
   @IsString()
   @IsOptional()
-  componentType?: string;
+  componentType?: string | null;
 
   @IsString()
   @IsOptional()
