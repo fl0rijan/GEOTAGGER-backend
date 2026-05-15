@@ -10,6 +10,7 @@ import { IsPublic } from '../auth/decorators/is-public.decorator';
 import { PaginatedLocationResponseDto } from './dto/responses/paginated-location.response.dto';
 import { GuessResultResponseDto } from './dto/responses/guess-result.response.dto';
 import { LocationResponseDto } from './dto/responses/location.response.dto';
+import { IsOptionalAuth } from '../auth/decorators/is-optional.decorator';
 
 @ApiTags('Locations')
 @Controller('location')
@@ -24,13 +25,14 @@ export class LocationsController {
 
   @Get()
   @ApiOperation({ summary: 'Get list of locations' })
-  @IsPublic()
+  @IsOptionalAuth()
   @ApiOkResponse({ type: PaginatedLocationResponseDto })
   async findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @GetUser('id') userId: string,
   ) {
-    return this.locationsService.findAll(+page, +limit);
+    return this.locationsService.findAll(userId, +page, +limit);
   }
 
   @Get('me')

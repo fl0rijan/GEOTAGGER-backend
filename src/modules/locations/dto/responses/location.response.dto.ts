@@ -21,4 +21,7 @@ export class LocationResponseDto {
 
   @ApiProperty({ required: false })
   name?: string;
+
+  @ApiProperty({ required: false })
+  userGuessDistance?: number;
 }

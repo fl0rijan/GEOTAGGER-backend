@@ -35,7 +35,7 @@ export class LocationsService {
     });
   }
 
-  async findAll(page: number = 1, limit: number = 10) {
+  async findAll(userId: string | null, page: number = 1, limit: number = 10) {
     const take = limit;
     const skip = (page - 1) * limit;
 
@@ -44,25 +44,42 @@ export class LocationsService {
         take,
         skip,
         orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          imageUrl: true,
-          latitude: false,
-          longitude: false,
-          name: false,
+        include: {
           user: { select: { firstName: true } },
+          guesses: userId
+            ? {
+                where: { userId },
+                orderBy: { errorDistance: 'asc' },
+                take: 1,
+              }
+            : false,
         },
       }),
       this.prisma.location.count(),
     ]);
 
+    const sanitizedData = locations.map((loc) => {
+      const bestGuess =
+        loc.guesses && loc.guesses.length > 0 ? loc.guesses[0] : null;
+
+      return {
+        id: loc.id,
+        imageUrl: loc.imageUrl,
+        uploadedBy: loc.user.firstName,
+        createdAt: loc.createdAt,
+        userGuessDistance: bestGuess
+          ? Math.round(bestGuess.errorDistance)
+          : null,
+      };
+    });
+
     return {
-      data: locations,
+      data: sanitizedData,
       meta: {
         totalItems,
         currentPage: page,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
+        itemsPerPage: take,
+        totalPages: Math.ceil(totalItems / take),
       },
     };
   }
