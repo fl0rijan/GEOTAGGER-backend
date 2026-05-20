@@ -10,6 +10,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
@@ -18,6 +19,7 @@ import { UploadImagesDto } from './dto/upload-images.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';
 import { Throttle } from '@nestjs/throttler';
+import { UploadResponseDto } from './dto/upload-response.dto';
 
 @ApiTags('Uploads')
 @Controller('uploads')
@@ -28,7 +30,6 @@ export class UploadsController {
   @Throttle({ default: { limit: 2, ttl: 60000 } })
   @ApiOperation({ summary: 'Upload image for location' })
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ type: UploadImagesDto })
   @UseInterceptors(
     FilesInterceptor('images', 1, {
       storage: multer.memoryStorage(),
@@ -38,7 +39,9 @@ export class UploadsController {
     description: 'The image have been successfully uploaded.',
     type: [String],
   })
-  uploadImage(
+  @ApiBody({ type: UploadImagesDto })
+  @ApiOkResponse({ type: UploadResponseDto })
+  async uploadImage(
     @UploadedFiles(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })
@@ -47,6 +50,7 @@ export class UploadsController {
     )
     files: Array<Express.Multer.File>,
   ) {
-    return this.uploadsService.uploadMultiple(files);
+    const urls = await this.uploadsService.uploadMultiple(files);
+    return { images: urls };
   }
 }
