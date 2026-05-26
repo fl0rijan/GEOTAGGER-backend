@@ -12,6 +12,9 @@ import {
 } from './dto/location-request.dto';
 import { LocationResponseDto } from './dto/responses/location.response.dto';
 import { GuessResultResponseDto } from './dto/responses/guess-result.response.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
+import { LeaderboardEntryDto } from './dto/responses/leadboard-entry.response.dto';
+import { RawLeaderboardResult } from './interfaces';
 
 @Injectable()
 export class LocationsService {
@@ -35,6 +38,61 @@ export class LocationsService {
     });
   }
 
+  async update(
+    id: string,
+    userId: string,
+    dto: UpdateLocationDto,
+  ): Promise<LocationResponseDto> {
+    const location = await this.prisma.location.findUnique({
+      where: { id },
+    });
+
+    if (!location) {
+      throw new NotFoundException('Location not found');
+    }
+
+    if (location.userId !== userId) {
+      throw new ForbiddenException(
+        'You are not allowed to edit this location.',
+      );
+    }
+
+    const updatedLocation = await this.prisma.location.update({
+      where: { id },
+      data: dto,
+      include: { user: { select: { firstName: true } } },
+    });
+
+    return {
+      id: updatedLocation.id,
+      imageUrl: updatedLocation.imageUrl,
+      latitude: updatedLocation.latitude,
+      longitude: updatedLocation.longitude,
+      name: updatedLocation.name || undefined,
+      uploadedBy: updatedLocation.user.firstName,
+      createdAt: updatedLocation.createdAt,
+    };
+  }
+
+  async delete(id: string, userId: string) {
+    const location = await this.prisma.location.findUnique({
+      where: { id },
+    });
+    if (!location) {
+      throw new NotFoundException('Location Not Found');
+    }
+
+    if (location.userId !== userId) {
+      throw new ForbiddenException(
+        'You are not allowed to delete this location.',
+      );
+    }
+
+    return this.prisma.location.delete({
+      where: { id },
+    });
+  }
+
   async findAllGuessed(userId: string, page: number = 1, limit: number = 10) {
     const take = limit;
     const skip = (page - 1) * limit;
@@ -52,7 +110,7 @@ export class LocationsService {
         where: whereFilter,
         take,
         skip,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'asc' },
         include: {
           user: { select: { firstName: true } },
           guesses: {
@@ -128,16 +186,25 @@ export class LocationsService {
     }
 
     const guessCount = await this.prisma.guess.count({
-      where: { userId, id },
+      where: { userId, locationId: id },
     });
 
-    const isRevealed = guessCount >= 3 || location.userId === userId;
+    const isRevealed = guessCount >= 5 || location.userId === userId;
+
+    const bestGuess = await this.prisma.guess.findFirst({
+      where: { userId, locationId: location.id },
+      orderBy: { errorDistance: 'asc' },
+    });
 
     return {
       id: location.id,
       imageUrl: location.imageUrl,
       uploadedBy: location.user.firstName,
       createdAt: location.createdAt,
+      attemptNumber: guessCount,
+      bestDistance: bestGuess ? bestGuess.errorDistance : undefined,
+      bestGuessLat: bestGuess ? bestGuess.guessedLat : undefined,
+      bestGuessLng: bestGuess ? bestGuess.guessedLng : undefined,
       ...(isRevealed && {
         latitude: location.latitude,
         longitude: location.longitude,
@@ -271,6 +338,13 @@ export class LocationsService {
         });
 
         const attemptNumber = prevGuesses + 1;
+
+        if (attemptNumber > 5) {
+          throw new BadRequestException(
+            'You have reached the maximum of 5 attempts for this location',
+          );
+        }
+
         let pointsToLose = 3;
         if (attemptNumber === 1) pointsToLose = 1;
         if (attemptNumber === 2) pointsToLose = 2;
@@ -305,13 +379,15 @@ export class LocationsService {
           data: { gamePoints: { decrement: pointsToLose } },
         });
 
-        const isRevealTime = attemptNumber >= 3;
+        const isRevealTime = attemptNumber >= 5;
+
+        const updatedRemainingPoints = user.gamePoints - pointsToLose;
 
         return {
           distanceMeters: Math.round(errorDistance),
           pointsDeducted: pointsToLose,
           attemptNumber: attemptNumber,
-          remainingPoints: user.gamePoints,
+          remainingPoints: updatedRemainingPoints,
           ...(isRevealTime && {
             actualLatitude: location.latitude,
             actualLongitude: location.longitude,
@@ -324,5 +400,37 @@ export class LocationsService {
         'We encountered a problem saving your guess. Please try again.',
       );
     }
+  }
+
+  async getLeaderboard(locationId: string): Promise<LeaderboardEntryDto[]> {
+    const bestGuesses = await this.prisma.$queryRaw<RawLeaderboardResult[]>`
+      SELECT DISTINCT
+      ON ("userId")
+        g.id,
+        g."errorDistance",
+        g."createdAt",
+        u."id",
+        u."firstName",
+        u."lastName",
+        u.image
+      FROM guesses g
+        JOIN users u
+      ON g."userId" = u.id
+      WHERE g."locationId" = ${locationId}
+      ORDER BY "userId", g."errorDistance" ASC
+        LIMIT 20
+    `;
+
+    return bestGuesses
+      .map((g) => ({
+        id: g.id,
+        userId: g.id,
+        firstName: g.firstName,
+        lastName: g.lastName,
+        image: g.image,
+        errorDistance: Math.round(Number(g.errorDistance)),
+        createdAt: g.createdAt,
+      }))
+      .sort((a, b) => a.errorDistance - b.errorDistance);
   }
 }

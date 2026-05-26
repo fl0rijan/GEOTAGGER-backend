@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber } from 'class-validator';
 
 export class LocationResponseDto {
   @ApiProperty({ example: 'd558b09a-2941-496e-9fb5-168b09b06fdb' })
@@ -12,6 +13,20 @@ export class LocationResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  @IsNumber()
+  @ApiProperty({ required: false })
+  attemptNumber?: number;
+
+  @IsNumber()
+  @ApiProperty({ required: false })
+  bestDistance?: number;
+
+  @ApiProperty({ required: false })
+  bestGuessLat?: number;
+
+  @ApiProperty({ required: false })
+  bestGuessLng?: number;
 
   @ApiProperty({ required: false })
   latitude?: number;

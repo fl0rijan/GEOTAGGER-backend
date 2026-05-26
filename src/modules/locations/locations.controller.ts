@@ -1,5 +1,14 @@
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import {
   CreateLocationDto,
@@ -11,6 +20,8 @@ import { GuessResultResponseDto } from './dto/responses/guess-result.response.dt
 import { LocationResponseDto } from './dto/responses/location.response.dto';
 import { IsOptionalAuth } from '../auth/decorators/is-optional.decorator';
 import { SkipThrottle } from '@nestjs/throttler';
+import { UpdateLocationDto } from './dto/update-location.dto';
+import { LeaderboardEntryDto } from './dto/responses/leadboard-entry.response.dto';
 
 @ApiTags('Locations')
 @Controller('location')
@@ -21,6 +32,28 @@ export class LocationsController {
   @ApiOperation({ summary: 'Create a new location' })
   async create(@GetUser('id') userId: string, @Body() dto: CreateLocationDto) {
     return this.locationsService.createLocation(userId, dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update your own location' })
+  @ApiOkResponse({ type: LocationResponseDto })
+  async update(
+    @Param('id') id: string,
+    @GetUser('id') userId: string,
+    @Body() dto: UpdateLocationDto,
+  ): Promise<LocationResponseDto> {
+    return this.locationsService.update(id, userId, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete location by id' })
+  async delete(@Param('id') id: string, @GetUser('id') userId: string) {
+    await this.locationsService.delete(id, userId);
+
+    return {
+      data: null,
+      message: 'Successfully deleted location',
+    };
   }
 
   @Get('guessed')
@@ -73,6 +106,7 @@ export class LocationsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a location by id' })
   @ApiOkResponse({ type: LocationResponseDto })
+  @SkipThrottle()
   async findOne(@Param('id') id: string, @GetUser('id') userId: string) {
     return this.locationsService.findOne(id, userId);
   }
@@ -93,5 +127,12 @@ export class LocationsController {
     @Body() dto: GuessLocationDto,
   ) {
     return this.locationsService.placeGuess(id, userId, dto);
+  }
+
+  @Get(':id/leaderboard')
+  @ApiOkResponse({ type: LeaderboardEntryDto, isArray: true })
+  @SkipThrottle()
+  async getLeaderboard(@Param('id') id: string) {
+    return this.locationsService.getLeaderboard(id);
   }
 }
