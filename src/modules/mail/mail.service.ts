@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import escape from 'lodash/escape';
 
 @Injectable()
 export class MailService {
@@ -24,11 +25,12 @@ export class MailService {
     token: string,
   ): Promise<void> {
     const url = `${this.config.get('FRONTEND_URL')}/verify-email?token=${token}`;
+    const safeName = escape(name);
 
     await this.sendEmail(
       email,
       'Verify your GeoTagger account',
-      `<h1>Welcome, ${name}!</h1>
+      `<h1>Welcome, ${safeName}!</h1>
        <p>Please verify your email by clicking the link below:</p>
        <a href="${url}">Verify Email</a>
         <p>If you cannot click it, copy and paste it: ${url}</p>`,
@@ -41,11 +43,12 @@ export class MailService {
     token: string,
   ): Promise<void> {
     const url = `${this.config.get('FRONTEND_URL')}/reset-password?token=${token}`;
+    const safeName = escape(name);
 
     await this.sendEmail(
       email,
       'Reset your GeoTagger password',
-      `<h1>Hi ${name},</h1>
+      `<h1>Hi ${safeName},</h1>
        <p>You requested a password reset. Click the link below to set a new password:</p>
        <a href="${url}">Reset Password</a>
        <p>If you cannot click it, copy and paste it: ${url}</p>

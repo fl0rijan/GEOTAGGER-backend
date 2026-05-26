@@ -6,11 +6,11 @@ import {
   GuessLocationDto,
 } from './dto/location-request.dto';
 import { GetUser } from '../../common/decorators/get-user.decorator';
-import { IsPublic } from '../auth/decorators/is-public.decorator';
 import { PaginatedLocationResponseDto } from './dto/responses/paginated-location.response.dto';
 import { GuessResultResponseDto } from './dto/responses/guess-result.response.dto';
 import { LocationResponseDto } from './dto/responses/location.response.dto';
 import { IsOptionalAuth } from '../auth/decorators/is-optional.decorator';
+import { SkipThrottle } from '@nestjs/throttler';
 
 @ApiTags('Locations')
 @Controller('location')
@@ -23,16 +23,29 @@ export class LocationsController {
     return this.locationsService.createLocation(userId, dto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get list of locations' })
+  @Get('guessed')
+  @ApiOperation({ summary: 'Get list of guessed locations' })
   @IsOptionalAuth()
   @ApiOkResponse({ type: PaginatedLocationResponseDto })
-  async findAll(
+  @SkipThrottle()
+  async findAllGuessed(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
     @GetUser('id') userId: string,
   ) {
-    return this.locationsService.findAll(userId, +page, +limit);
+    return this.locationsService.findAllGuessed(userId, +page, +limit);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get list of locations' })
+  @IsOptionalAuth()
+  @ApiOkResponse({ type: PaginatedLocationResponseDto })
+  @SkipThrottle()
+  async findAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    return this.locationsService.findAll(+page, +limit);
   }
 
   @Get('me')

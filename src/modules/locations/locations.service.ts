@@ -35,27 +35,36 @@ export class LocationsService {
     });
   }
 
-  async findAll(userId: string | null, page: number = 1, limit: number = 10) {
+  async findAllGuessed(userId: string, page: number = 1, limit: number = 10) {
     const take = limit;
     const skip = (page - 1) * limit;
 
+    const whereFilter = {
+      guesses: {
+        some: {
+          userId: userId,
+        },
+      },
+    };
+
     const [locations, totalItems] = await Promise.all([
       this.prisma.location.findMany({
+        where: whereFilter,
         take,
         skip,
         orderBy: { createdAt: 'desc' },
         include: {
           user: { select: { firstName: true } },
-          guesses: userId
-            ? {
-                where: { userId },
-                orderBy: { errorDistance: 'asc' },
-                take: 1,
-              }
-            : false,
+          guesses: {
+            where: { userId },
+            orderBy: { errorDistance: 'asc' },
+            take: 1,
+          },
         },
       }),
-      this.prisma.location.count(),
+      this.prisma.location.count({
+        where: whereFilter,
+      }),
     ]);
 
     const sanitizedData = locations.map((loc) => {
@@ -68,13 +77,37 @@ export class LocationsService {
         uploadedBy: loc.user.firstName,
         createdAt: loc.createdAt,
         userGuessDistance: bestGuess
-          ? Math.round(bestGuess.errorDistance)
-          : null,
+          ? Math.round(Number(bestGuess.errorDistance))
+          : 0,
       };
     });
 
     return {
       data: sanitizedData,
+      meta: {
+        totalItems,
+        currentPage: page,
+        itemsPerPage: take,
+        totalPages: Math.ceil(totalItems / take),
+      },
+    };
+  }
+
+  async findAll(page: number = 1, limit: number = 10) {
+    const take = limit;
+    const skip = (page - 1) * limit;
+
+    const [locations, totalItems] = await Promise.all([
+      this.prisma.location.findMany({
+        take,
+        skip,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.location.count(),
+    ]);
+
+    return {
+      data: locations,
       meta: {
         totalItems,
         currentPage: page,
@@ -160,8 +193,9 @@ export class LocationsService {
   }
 
   async findMyUploaded(userId: string, page = 1, limit = 10) {
+    const take = limit;
     const skip = (page - 1) * limit;
-    const [data, total] = await Promise.all([
+    const [locations, totalItems] = await Promise.all([
       this.prisma.location.findMany({
         where: { userId },
         skip,
@@ -171,7 +205,15 @@ export class LocationsService {
       this.prisma.location.count({ where: { userId } }),
     ]);
 
-    return { data, meta: { total, page, lastPage: Math.ceil(total / limit) } };
+    return {
+      data: locations,
+      meta: {
+        totalItems,
+        currentPage: page,
+        itemsPerPage: take,
+        totalPages: Math.ceil(totalItems / take),
+      },
+    };
   }
 
   async getMyGuessHistory(userId: string, page = 1, limit = 10) {
