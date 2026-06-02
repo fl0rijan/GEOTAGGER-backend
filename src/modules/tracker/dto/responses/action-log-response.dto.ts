@@ -3,7 +3,13 @@ import { ActionType } from '@prisma/client';
 
 class LogUserDto {
   @ApiProperty()
-  username: string;
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+
+  @ApiProperty()
+  image: string;
 }
 
 export class ActionLogResponseDto {

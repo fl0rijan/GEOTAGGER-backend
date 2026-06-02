@@ -114,8 +114,6 @@ export class AuthService {
           if (err) {
             const field = err.message;
 
-            console.log(field);
-
             if (field.includes('email')) {
               throw new BadRequestException('Email already exists');
             }
