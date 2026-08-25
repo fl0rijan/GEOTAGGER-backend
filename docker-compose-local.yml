@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    env_file:
+      - .env.local
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - geotagger-network
+
+  api:
+    build: .
+    container_name: geotagger-api
+    env_file:
+      - .env.local
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    networks:
+      - geotagger-network
+
+networks:
+  geotagger-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
